@@ -1,1 +1,11 @@
+to be continue...
+still in the process
+So far, we can log into our account, skip the necessary notifications, access our follower list, and view them.  
+At the same time, we can navigate to the profiles of the accounts we want to follow.  
 
+### Improvements to be made:  
+- Implementing the follow process  
+- Displaying the profiles to be unfollowed and performing the unfollow action  
+- Updating the total follower count in the terminal as we scroll through the follower list  
+
+Additionally, I will include detailed explanations and necessary links (such as library installations) that may be useful for the project after its completion.
