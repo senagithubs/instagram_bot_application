@@ -1,4 +1,4 @@
-username = "javel.23_"
-password= "ılovemylife"
-security_code = "40712586"
+username = "write ur username here"
+password= "write ur password her"
+security_code = "write your sec code here"
 
