@@ -2,98 +2,149 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
+import random
 import chromedriver_autoinstaller
-from userinfo import username, password, security_code  # Kullanıcı bilgilerini içe aktar
+from userinfo import username, password, security_code
 
-class Instagram:
+class InstagramBot:
     def __init__(self, username, password, security_code):
         self.username = username
         self.password = password
         self.security_code = security_code
-
-        # ChromeDriver'ı otomatik indir ve yolunu al
         driver_path = chromedriver_autoinstaller.install()
-
-        # WebDriver için Service oluştur
         service = Service(driver_path)
         options = webdriver.ChromeOptions()
-
-        # WebDriver başlat
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         self.browser = webdriver.Chrome(service=service, options=options)
 
-    def signIn(self):
-        """Instagram'a giriş yapar ve doğrulama kodunu girer."""
+    def sign_in(self):
         self.browser.get("https://www.instagram.com/accounts/login/")
-        time.sleep(5)  # Sayfanın yüklenmesini bekle
-
-        usernameInput = self.browser.find_element(By.NAME, "username")
-        passwordInput = self.browser.find_element(By.NAME, "password")
-
-        usernameInput.send_keys(self.username)
-        passwordInput.send_keys(self.password)
-        passwordInput.send_keys(Keys.ENTER)
+        time.sleep(5)
         
-        time.sleep(5)  # Giriş işleminin tamamlanmasını bekle
-
         try:
-            # Doğrulama kodu girme ekranını kontrol et
-            security_input = self.browser.find_element(By.NAME, "verificationCode")
+            cookie_button = WebDriverWait(self.browser, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Tümünü kabul et')]"))
+            )
+            cookie_button.click()
+        except:
+            pass
+        
+        username_input = WebDriverWait(self.browser, 10).until(
+            EC.presence_of_element_located((By.NAME, "username"))
+        )
+        password_input = self.browser.find_element(By.NAME, "password")
+        
+        username_input.send_keys(self.username)
+        time.sleep(random.uniform(2, 4))
+        password_input.send_keys(self.password)
+        time.sleep(random.uniform(2, 4))
+        password_input.send_keys(Keys.ENTER)
+        time.sleep(5)
+        
+        try:
+            security_input = WebDriverWait(self.browser, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//input[@name='verificationCode']"))
+            )
             security_input.send_keys(self.security_code)
-            
-            time.sleep(2)  # Kısa bir bekleme süresi
-            
-            # "Onayla" butonunu bul ve tıkla
+            time.sleep(2)
             confirm_button = self.browser.find_element(By.XPATH, "//button[contains(text(), 'Onayla')]")
             confirm_button.click()
-            print("Güvenlik kodu başarıyla girildi ve onaylandı.")
+        except:
+            pass
+        
+        time.sleep(7)
+        self.check_suspicious_login()
+        self.browser.get(f"https://www.instagram.com/{self.username}/")
+        time.sleep(5)
+
+    def check_suspicious_login(self):
+        try:
+            approval_button = WebDriverWait(self.browser, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Bu bendim')]"))
+            )
+            approval_button.click()
+            time.sleep(5)
+        except:
+            pass
+
+    def get_followers(self, max_followers=1000):
+        self.browser.get(f"https://www.instagram.com/{self.username}/")
+        time.sleep(5)
+        
+        try:
+            followers_button = WebDriverWait(self.browser, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[contains(@href, '/followers/')]")
+            ))
+            followers_button.click()
+            time.sleep(5)
             
-            time.sleep(7)
-            self.browser.get("https://www.instagram.com/javel.23_/explore/"
-)  # Ana sayfaya yönlendir
-            print("Instagram ana sayfasına geçildi.")
-
-            # Çıkan pop-up'ı kapatma işlemi
-            time.sleep(5)  # Sayfanın yüklenmesini bekle
-            try:
-                close_button = self.browser.find_element(By.XPATH, "//button[contains(@class, 'HoLwm')]")
-                close_button.click()
-                print("Açılan pop-up başarıyla kapatıldı.")
-            except Exception as e:
-                print("Pop-up kapatma butonu bulunamadı veya hata oluştu: ", e)
-
+            modal = WebDriverWait(self.browser, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[role=dialog] ul"))
+            )
+            
+            action = webdriver.ActionChains(self.browser)
+            followers = set()
+            last_count = 0
+            
+            while True:
+                user_elements = modal.find_elements(By.TAG_NAME, "li")
+                
+                for user in user_elements:
+                    try:
+                        link_element = user.find_element(By.TAG_NAME, "a")
+                        username = link_element.text.strip()
+                        link = link_element.get_attribute("href")
+                        if username and username not in followers:
+                            followers.add(username)
+                            print(f"{len(followers)} {link}")
+                    except:
+                        pass
+                
+                action.key_down(Keys.SPACE).key_up(Keys.SPACE).perform()
+                time.sleep(2)
+                
+                new_count = len(followers)
+                if new_count >= max_followers or new_count == last_count:
+                    break
+                last_count = new_count
+                
+            print(f"Toplam takipçi sayısı: {len(followers)}")
+            
         except Exception as e:
-            print(f"Doğrulama kodu girme işlemi başarısız oldu: {e}")
-
-    def getFollowers(self):
-        """Takipçileri alır (Geliştirme aşamasında)."""
-        pass
-
-    def followUser(self, username):
-        """Belirtilen kullanıcıyı takip eder (Geliştirme aşamasında)."""
-        pass
-
-    def unFollowUser(self, username):
-        """Belirtilen kullanıcıyı takipten çıkarır (Geliştirme aşamasında)."""
-        pass
-
+            print(f"Takipçi listesi açılamadı: {e}")
+    
     def close(self):
-        """Tarayıcıyı kapatır."""
         try:
             if self.browser:
-                time.sleep(5)  # Kapatmadan önce bekleme süresi
+                time.sleep(44444444445)
                 self.browser.quit()
+                print("Tarayıcı kapatıldı.")
         except Exception as e:
             print(f"Tarayıcı kapatma hatası: {e}")
+            
+    def followUser(self,username):
+        self.browser.get(f"https://www.instagram.com/{username}/")
+        time.sleep(1)
 
-# Programı başlat
-app = Instagram(username, password, security_code)
-app.signIn()
+        followButton  = self.browser.find_element(By.TAG_NAME("button"))
+        if followButton =="Takip Et":
+            followButton.click()
+            time.sleep(2)
+        else:
+            print(f"{username} sayfasını zaten takip ediyorsunuz")
 
-# Tarayıcıyı düzgün şekilde kapat
-app.close()
 
-# selenium kullanırken chromedriver yüklememiz gerekli!
-# bunun için şu linki kullanın! Bilgisayarınızdaki Chrome sürümünü otomatik tespit ederek uygun ChromeDriver'ı indirir:
-# https://pypi.org/project/chromedriver-autoinstaller/
-# Nasıl yapılacağını README sayfasında detaylı olarak anlatacağım.
+    def followUsers(self,users):
+        for user in users:
+            self.followUser(user)
+
+
+if __name__ == "__main__":
+    app = InstagramBot(username, password, security_code)
+    app.sign_in()
+    app.get_followers()
+    app.followUsers(["justinbieber","adele"])
+    app.close()
